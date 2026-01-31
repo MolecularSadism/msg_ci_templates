@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   ci:
-    uses: MolecularSadism/msg_ci_templates/.github/workflows/bevy-0.18-ci.yml@main
+    uses: MolecularSadism/msg_ci_templates/.github/workflows/bevy-0.18-ci.yaml@main
 ```
 
 **Customization:**
@@ -41,7 +41,7 @@ jobs:
 ```yaml
 jobs:
   ci:
-    uses: MolecularSadism/msg_ci_templates/.github/workflows/bevy-0.18-ci.yml@main
+    uses: MolecularSadism/msg_ci_templates/.github/workflows/bevy-0.18-ci.yaml@main
     with:
       rust-toolchain: nightly-2026-01-22  # Optional: default is nightly-2026-01-22
       bevy-lint-enabled: true              # Optional: default is true
