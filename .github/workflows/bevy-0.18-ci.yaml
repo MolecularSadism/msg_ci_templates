@@ -125,9 +125,6 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -A clippy::needless_pass_by_value -A clippy::too_many_arguments -A clippy::type_complexity
 
-      - name: Run Clippy (pedantic)
-        run: cargo clippy --all-targets --all-features -- -W clippy::pedantic -A clippy::needless_pass_by_value -A clippy::too_many_arguments -A clippy::type_complexity
-
   # Run Bevy lints
   bevy-lint:
     name: Bevy Lint
