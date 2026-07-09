@@ -1,5 +1,10 @@
 # msg_ci_templates
 
+[![CI](https://github.com/MolecularSadism/msg_ci_templates/workflows/CI/badge.svg)](https://github.com/MolecularSadism/msg_ci_templates/actions)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/MolecularSadism/msg_ci_templates#license)
+[![Bevy](https://img.shields.io/badge/Bevy-0.18-blue.svg)](https://bevyengine.org/)
+[![Rust](https://img.shields.io/badge/rust-2024%20edition-orange.svg)](https://www.rust-lang.org/)
+
 Reusable GitHub Actions CI workflows for Bevy projects.
 
 ## Available Workflows
