@@ -7,12 +7,22 @@ on:
         description: 'Rust toolchain to use'
         required: false
         type: string
-        default: 'nightly-2026-01-22'
+        default: 'stable'
+      cargo-features:
+        description: 'Cargo feature flags passed to build/test/clippy/doc commands (e.g. "--all-features", "--features foo", or "" for default features)'
+        required: false
+        type: string
+        default: '--all-features'
       bevy-lint-enabled:
-        description: 'Enable Bevy lint checks'
+        description: 'Enable Bevy lint checks (requires a nightly toolchain, see bevy-lint-toolchain)'
         required: false
         type: boolean
         default: true
+      bevy-lint-toolchain:
+        description: 'Rust toolchain used for the Bevy lint job (must be nightly)'
+        required: false
+        type: string
+        default: 'nightly-2026-01-22'
       bevy-lint-rev:
         description: 'Bevy lint git revision'
         required: false
@@ -99,7 +109,7 @@ jobs:
           save-if: false
 
       - name: Check documentation
-        run: cargo doc --no-deps --all-features
+        run: cargo doc --no-deps ${{ inputs.cargo-features }}
 
   # Run Clippy lints
   clippy:
@@ -123,7 +133,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -A clippy::needless_pass_by_value -A clippy::too_many_arguments -A clippy::type_complexity
+        run: cargo clippy --all-targets ${{ inputs.cargo-features }} -- -A clippy::needless_pass_by_value -A clippy::too_many_arguments -A clippy::type_complexity
 
   # Run Bevy lints
   bevy-lint:
@@ -138,7 +148,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ inputs.rust-toolchain }}
+          toolchain: ${{ inputs.bevy-lint-toolchain }}
           components: rustc-codegen-cranelift-preview, rustc-dev, llvm-tools-preview
 
       - name: Restore Rust cache
@@ -151,7 +161,7 @@ jobs:
         run: cargo install --git https://github.com/TheBevyFlock/bevy_cli --rev ${{ inputs.bevy-lint-rev }} --locked bevy_lint
 
       - name: Run Bevy lints
-        run: bevy_lint --all-targets --all-features
+        run: bevy_lint --all-targets ${{ inputs.cargo-features }}
         env:
           RUSTFLAGS: -Zcodegen-backend=cranelift
 
@@ -176,7 +186,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run tests
-        run: cargo test --all-targets --all-features
+        run: cargo test --all-targets ${{ inputs.cargo-features }}
 
       - name: Run doc tests
-        run: cargo test --doc --all-features
+        run: cargo test --doc ${{ inputs.cargo-features }}

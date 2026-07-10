@@ -48,11 +48,18 @@ jobs:
   ci:
     uses: MolecularSadism/msg_ci_templates/.github/workflows/bevy-0.18-ci.yaml@main
     with:
-      rust-toolchain: nightly-2026-01-22  # Optional: default is nightly-2026-01-22
-      bevy-lint-enabled: true              # Optional: default is true
+      rust-toolchain: stable               # Optional: default is stable
+      cargo-features: '--all-features'     # Optional: feature flags for build/test/clippy/doc (use '' for default features)
+      bevy-lint-enabled: true              # Optional: default is true (requires a nightly toolchain)
+      bevy-lint-toolchain: nightly-2026-01-22  # Optional: nightly used only by the bevy-lint job
       bevy-lint-rev: 02112fe3d3de6d1369892ec7a8ea39a1143d2977  # Optional: default shown
       forbidden-attributes-check: true     # Optional: default is true
 ```
+
+> **Note:** The main pipeline (format, docs, clippy, tests) runs on `stable` by
+> default. The `bevy-lint` job requires a nightly toolchain (cranelift codegen
+> backend), so it uses its own `bevy-lint-toolchain` input. Disable it with
+> `bevy-lint-enabled: false` if you want a fully-stable pipeline.
 
 ## License
 
