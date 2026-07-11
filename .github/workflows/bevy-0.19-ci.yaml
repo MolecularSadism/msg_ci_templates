@@ -1,18 +1,29 @@
-name: Bevy 0.18 CI
+name: Bevy 0.19 CI
 
 on:
   workflow_call:
     inputs:
       rust-toolchain:
-        description: 'Rust toolchain to use'
+        description: 'Rust toolchain to use for format, docs, clippy and tests'
+        required: false
+        type: string
+        # Bevy 0.19 requires a toolchain where `cfg_select` is stable
+        # (stabilized during the 1.95 cycle), so this variant defaults to
+        # stable rather than the older nightly used by the 0.18 variant.
+        default: 'stable'
+      bevy-lint-enabled:
+        description: 'Enable Bevy lint checks (requires a nightly toolchain that can compile your Bevy version)'
+        required: false
+        type: boolean
+        # Disabled by default: the currently released bevy_lint pins
+        # nightly-2026-01-22, which predates `cfg_select` stabilization and so
+        # cannot compile Bevy 0.19. Enable once a compatible bevy_lint ships.
+        default: false
+      bevy-lint-toolchain:
+        description: 'Rust toolchain used for the Bevy lint job (must be nightly)'
         required: false
         type: string
         default: 'nightly-2026-01-22'
-      bevy-lint-enabled:
-        description: 'Enable Bevy lint checks'
-        required: false
-        type: boolean
-        default: true
       bevy-lint-rev:
         description: 'Bevy lint git revision'
         required: false
@@ -138,7 +149,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ inputs.rust-toolchain }}
+          toolchain: ${{ inputs.bevy-lint-toolchain }}
           components: rustc-codegen-cranelift-preview, rustc-dev, llvm-tools-preview
 
       - name: Restore Rust cache
