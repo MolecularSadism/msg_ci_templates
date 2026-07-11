@@ -12,23 +12,24 @@ on:
         # stable rather than the older nightly used by the 0.18 variant.
         default: 'stable'
       bevy-lint-enabled:
-        description: 'Enable Bevy lint checks (requires a nightly toolchain that can compile your Bevy version)'
+        description: 'Enable Bevy lint checks'
         required: false
         type: boolean
-        # Disabled by default: the currently released bevy_lint pins
-        # nightly-2026-01-22, which predates `cfg_select` stabilization and so
-        # cannot compile Bevy 0.19. Enable once a compatible bevy_lint ships.
-        default: false
+        default: true
       bevy-lint-toolchain:
-        description: 'Rust toolchain used for the Bevy lint job (must be nightly)'
+        description: 'Rust toolchain used for the Bevy lint job (must be the nightly that the pinned bevy_lint revision requires)'
         required: false
         type: string
-        default: 'nightly-2026-01-22'
+        # bevy_lint main pins nightly-2026-04-16, which is new enough to
+        # compile Bevy 0.19 (unlike the older nightly the v0.6.0 release uses).
+        default: 'nightly-2026-04-16'
       bevy-lint-rev:
-        description: 'Bevy lint git revision'
+        description: 'Bevy lint git revision (from TheBevyFlock/bevy_cli)'
         required: false
         type: string
-        default: '02112fe3d3de6d1369892ec7a8ea39a1143d2977'
+        # Pinned to a bevy_cli main commit, because no tagged bevy_lint release
+        # supports Bevy 0.19 yet. Bump to a tagged release once one ships.
+        default: '6d3f8c9b2c98b57276b81eae5058ca31eaea279d'
       forbidden-attributes-check:
         description: 'Check for forbidden doc attributes (no_run, ignore)'
         required: false
@@ -140,17 +141,19 @@ jobs:
   bevy-lint:
     name: Bevy Lint
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     if: ${{ inputs.bevy-lint-enabled }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # bevy_lint requires the nightly it pins, with the `rustc-dev` and
+      # `llvm-tools` components (it links against internal rustc crates).
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.bevy-lint-toolchain }}
-          components: rustc-codegen-cranelift-preview, rustc-dev, llvm-tools-preview
+          components: rustc-dev, llvm-tools
 
       - name: Restore Rust cache
         uses: Swatinem/rust-cache@v2
@@ -163,8 +166,6 @@ jobs:
 
       - name: Run Bevy lints
         run: bevy_lint --all-targets --all-features
-        env:
-          RUSTFLAGS: -Zcodegen-backend=cranelift
 
   # Run tests
   test:

@@ -58,12 +58,13 @@ jobs:
 
 Same jobs as the 0.18 variant, but targeting Bevy 0.19.
 
-Bevy 0.19 uses `cfg_select`, which stabilized during the Rust 1.95 cycle
-(*after* the `nightly-2026-01-22` build that `bevy_lint` pins). This variant
-therefore **defaults the main pipeline to `stable`** and keeps the `bevy-lint`
-job on its own nightly `bevy-lint-toolchain`. `bevy-lint` is **disabled by
-default** here, because the currently released `bevy_lint` nightly cannot
-compile Bevy 0.19; enable it once a compatible `bevy_lint` ships.
+Bevy 0.19 uses `cfg_select`, which stabilized during the Rust 1.95 cycle. This
+variant therefore **defaults the main pipeline to `stable`** and keeps the
+`bevy-lint` job on its own nightly `bevy-lint-toolchain`. Because no tagged
+`bevy_lint` release supports Bevy 0.19 yet, `bevy-lint` is pinned to a
+`TheBevyFlock/bevy_cli` **main revision** (with its matching
+`nightly-2026-04-16` toolchain) that can compile Bevy 0.19. Bump
+`bevy-lint-rev`/`bevy-lint-toolchain` to a tagged release once one ships.
 
 **Usage:**
 
@@ -93,9 +94,9 @@ jobs:
     uses: MolecularSadism/msg_ci_templates/.github/workflows/bevy-0.19-ci.yaml@main
     with:
       rust-toolchain: stable               # Optional: default is stable
-      bevy-lint-enabled: false             # Optional: default is false (see note above)
-      bevy-lint-toolchain: nightly-2026-01-22  # Optional: nightly used only by the bevy-lint job
-      bevy-lint-rev: 02112fe3d3de6d1369892ec7a8ea39a1143d2977  # Optional: default shown
+      bevy-lint-enabled: true              # Optional: default is true
+      bevy-lint-toolchain: nightly-2026-04-16  # Optional: nightly required by the pinned bevy_lint
+      bevy-lint-rev: 6d3f8c9b2c98b57276b81eae5058ca31eaea279d  # Optional: bevy_cli main rev (Bevy 0.19)
       forbidden-attributes-check: true     # Optional: default is true
 ```
 
