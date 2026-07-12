@@ -20,6 +20,9 @@ Comprehensive CI workflow for Bevy 0.18 projects.
 - Clippy linting (standard + pedantic)
 - Bevy lint checks
 - Tests (unit, integration, doc)
+- Publish dry run — `cargo publish --dry-run` (library crates, opt-in)
+- Release tag check — verifies the `Cargo.toml` version is unpublished on
+  crates.io and higher than the highest existing git tag (opt-in)
 
 **Usage:**
 
@@ -52,7 +55,18 @@ jobs:
       bevy-lint-enabled: true              # Optional: default is true
       bevy-lint-rev: 02112fe3d3de6d1369892ec7a8ea39a1143d2977  # Optional: default shown
       forbidden-attributes-check: true     # Optional: default is true
+      publish-checks: true                 # Optional: default is false — enable for library crates
+      crate-tag-prefix: v                  # Optional: default is "v" (=> tags like v1.2.3)
+      release-tag-check-strict: false      # Optional: default is false — warn (not fail) when
+                                           #   Cargo.toml version isn't above the highest git tag
 ```
+
+The publish dry run and release tag check only run when `publish-checks: true`.
+Enable them for **library crates** you publish to crates.io. The release tag
+check hard-fails when the `Cargo.toml` version is already published on crates.io
+(a genuine blocker), and — by default — only *warns* when the version isn't
+higher than the highest existing git tag. Set `release-tag-check-strict: true`
+to make that condition fail CI too.
 
 ### bevy-0.19-ci.yml
 
@@ -99,6 +113,43 @@ jobs:
       bevy-lint-rev: 6d3f8c9b2c98b57276b81eae5058ca31eaea279d  # Optional: bevy_cli main rev (Bevy 0.19)
       forbidden-attributes-check: true     # Optional: default is true
 ```
+
+The same `publish-checks`, `crate-tag-prefix`, and `release-tag-check-strict`
+inputs documented for the 0.18 variant also apply here.
+
+### release.yaml
+
+Tag and publish a release for a library crate. Reads the version from
+`Cargo.toml`, validates it (unpublished on crates.io, higher than the highest
+existing git tag, tag does not already exist), then **publishes to crates.io**,
+**creates and pushes the tag** `<prefix><version>` (e.g. `v1.2.3`), and
+**creates a GitHub release** for that tag.
+
+Trigger it manually so releases are deliberate. Add a `CARGO_REGISTRY_TOKEN`
+repository secret (your crates.io API token) before using it.
+
+**Usage:**
+
+```yaml
+name: Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    uses: MolecularSadism/msg_ci_templates/.github/workflows/release.yaml@main
+    secrets:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    with:
+      rust-toolchain: nightly-2026-01-22  # Optional: default is nightly-2026-01-22
+      crate-tag-prefix: v                  # Optional: default is "v"
+      all-features: true                   # Optional: default is true
+```
+
+To release: bump the version in `Cargo.toml`, merge to `main`, then run the
+**Release** workflow from the Actions tab. It publishes the crate, creates
+`vX.Y.Z`, and cuts the matching GitHub release.
 
 ## License
 

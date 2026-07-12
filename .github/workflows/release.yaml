@@ -1,0 +1,137 @@
+name: Release
+
+# Reusable release workflow.
+#
+# Reads the version from Cargo.toml, verifies it is a sensible next release
+# (unpublished on crates.io, higher than the highest existing git tag, and the
+# tag does not already exist), then:
+#   1. publishes the crate to crates.io,
+#   2. creates and pushes the git tag `<prefix><version>` (e.g. v1.2.3),
+#   3. creates a GitHub release for that tag.
+#
+# crates.io publish happens before tagging on purpose: publishing is the
+# irreversible step most likely to fail, so a failure leaves no dangling tag.
+
+on:
+  workflow_call:
+    inputs:
+      rust-toolchain:
+        description: 'Rust toolchain to use'
+        required: false
+        type: string
+        default: 'nightly-2026-01-22'
+      crate-tag-prefix:
+        description: 'Git tag prefix for releases (e.g. "v" => v1.2.3)'
+        required: false
+        type: string
+        default: 'v'
+      all-features:
+        description: 'Build/verify with --all-features when publishing'
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      CARGO_REGISTRY_TOKEN:
+        description: 'crates.io API token used by `cargo publish`'
+        required: true
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-toolchain }}
+
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci
+          save-if: false
+
+      - name: Resolve and validate version
+        id: version
+        env:
+          TAG_PREFIX: ${{ inputs.crate-tag-prefix }}
+        run: |
+          set -euo pipefail
+
+          META=$(cargo metadata --no-deps --format-version 1)
+          NAME=$(echo "$META" | jq -r '.packages[0].name')
+          VERSION=$(echo "$META" | jq -r '.packages[0].version')
+          TAG="${TAG_PREFIX}${VERSION}"
+          echo "Crate: ${NAME}  Version: ${VERSION}  Tag: ${TAG}"
+
+          # The tag must not already exist.
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "::error::Tag ${TAG} already exists"
+            exit 1
+          fi
+
+          # The version must not already be published on crates.io.
+          PUBLISHED=$(curl -sSf "https://crates.io/api/v1/crates/${NAME}" 2>/dev/null \
+            | jq -r --arg v "$VERSION" '[.versions[]?.num] | index($v) // empty' || true)
+          if [ -n "$PUBLISHED" ]; then
+            echo "::error::Version ${VERSION} of ${NAME} is already published on crates.io"
+            exit 1
+          fi
+
+          # The version must be strictly higher than the highest existing git tag.
+          HIGHEST=$(git tag --list "${TAG_PREFIX}*" \
+            | sed "s|^${TAG_PREFIX}||" \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' \
+            | sort -V | tail -1 || true)
+          if [ -n "$HIGHEST" ]; then
+            TOP=$(printf '%s\n%s\n' "$HIGHEST" "$VERSION" | sort -V | tail -1)
+            if [ "$TOP" != "$VERSION" ] || [ "$VERSION" = "$HIGHEST" ]; then
+              echo "::error::Version ${VERSION} is not higher than the highest git tag ${HIGHEST}"
+              exit 1
+            fi
+          fi
+
+          echo "OK: ${VERSION} is a valid next release"
+          {
+            echo "name=${NAME}"
+            echo "version=${VERSION}"
+            echo "tag=${TAG}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.all-features }}" = "true" ]; then
+            cargo publish --all-features
+          else
+            cargo publish
+          fi
+
+      - name: Create and push git tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" --title "$TAG" --generate-notes

@@ -23,6 +23,21 @@ on:
         required: false
         type: boolean
         default: true
+      publish-checks:
+        description: 'Enable crates.io publish dry-run and release-tag sanity checks (for library crates you publish)'
+        required: false
+        type: boolean
+        default: false
+      crate-tag-prefix:
+        description: 'Git tag prefix used for releases (e.g. "v" => v1.2.3)'
+        required: false
+        type: string
+        default: 'v'
+      release-tag-check-strict:
+        description: 'Fail CI (not just warn) when Cargo.toml version is not higher than the highest existing git tag'
+        required: false
+        type: boolean
+        default: false
 
 env:
   RUSTFLAGS: -Dwarnings
@@ -180,3 +195,91 @@ jobs:
 
       - name: Run doc tests
         run: cargo test --doc --all-features
+
+  # Verify the crate can be packaged and published (library crates only)
+  publish-dry-run:
+    name: Publish Dry Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ inputs.publish-checks }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-toolchain }}
+
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci
+          save-if: false
+
+      - name: Cargo publish dry run
+        run: cargo publish --dry-run --all-features
+
+  # Verify the Cargo.toml version is a sensible next release
+  release-tag-check:
+    name: Release Tag Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ inputs.publish-checks }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-toolchain }}
+
+      - name: Verify version is releasable
+        env:
+          TAG_PREFIX: ${{ inputs.crate-tag-prefix }}
+          STRICT: ${{ inputs.release-tag-check-strict }}
+        run: |
+          set -euo pipefail
+
+          META=$(cargo metadata --no-deps --format-version 1)
+          NAME=$(echo "$META" | jq -r '.packages[0].name')
+          VERSION=$(echo "$META" | jq -r '.packages[0].version')
+          echo "Crate: ${NAME}  Version: ${VERSION}"
+
+          # 1) The version must not already be published on crates.io.
+          PUBLISHED=$(curl -sSf "https://crates.io/api/v1/crates/${NAME}" 2>/dev/null \
+            | jq -r --arg v "$VERSION" '[.versions[]?.num] | index($v) // empty' || true)
+          if [ -n "$PUBLISHED" ]; then
+            echo "::error::Version ${VERSION} of ${NAME} is already published on crates.io"
+            exit 1
+          fi
+          echo "OK: ${VERSION} is not yet published on crates.io"
+
+          # 2) The version should be strictly higher than the highest existing git tag.
+          git fetch --tags --force >/dev/null 2>&1 || true
+          HIGHEST=$(git tag --list "${TAG_PREFIX}*" \
+            | sed "s|^${TAG_PREFIX}||" \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' \
+            | sort -V | tail -1 || true)
+
+          if [ -z "$HIGHEST" ]; then
+            echo "OK: no existing release tags found"
+            exit 0
+          fi
+          echo "Highest existing tag: ${TAG_PREFIX}${HIGHEST}"
+
+          TOP=$(printf '%s\n%s\n' "$HIGHEST" "$VERSION" | sort -V | tail -1)
+          if [ "$TOP" = "$VERSION" ] && [ "$VERSION" != "$HIGHEST" ]; then
+            echo "OK: ${VERSION} is higher than ${HIGHEST}"
+          else
+            MSG="Cargo.toml version ${VERSION} is not higher than the highest git tag ${HIGHEST}"
+            if [ "$STRICT" = "true" ]; then
+              echo "::error::${MSG}"
+              exit 1
+            fi
+            echo "::warning::${MSG} (advisory — set release-tag-check-strict: true to enforce)"
+          fi
