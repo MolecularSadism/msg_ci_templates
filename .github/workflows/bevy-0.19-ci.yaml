@@ -35,6 +35,11 @@ on:
         required: false
         type: boolean
         default: true
+      system-dependencies:
+        description: 'Space-separated apt packages installed before jobs that build dev-dependencies and examples (Bevy default features need ALSA, udev, Wayland and xkbcommon). Set to an empty string to skip.'
+        required: false
+        type: string
+        default: 'pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev'
 
 env:
   RUSTFLAGS: -Dwarnings
@@ -134,6 +139,16 @@ jobs:
           shared-key: ci
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
+      - name: Install system dependencies
+        if: ${{ inputs.system-dependencies != '' }}
+        env:
+          PACKAGES: ${{ inputs.system-dependencies }}
+        run: |
+          sudo apt-get update
+          # Word-split the space-separated list into package names.
+          # shellcheck disable=SC2086
+          sudo apt-get install -y --no-install-recommends $PACKAGES
+
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -A clippy::needless_pass_by_value -A clippy::too_many_arguments -A clippy::type_complexity
 
@@ -161,6 +176,16 @@ jobs:
           shared-key: ci
           save-if: false
 
+      - name: Install system dependencies
+        if: ${{ inputs.system-dependencies != '' }}
+        env:
+          PACKAGES: ${{ inputs.system-dependencies }}
+        run: |
+          sudo apt-get update
+          # Word-split the space-separated list into package names.
+          # shellcheck disable=SC2086
+          sudo apt-get install -y --no-install-recommends $PACKAGES
+
       - name: Install Bevy Lint
         run: cargo install --git https://github.com/TheBevyFlock/bevy_cli --rev ${{ inputs.bevy-lint-rev }} --locked bevy_lint
 
@@ -186,6 +211,16 @@ jobs:
         with:
           shared-key: test
           save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install system dependencies
+        if: ${{ inputs.system-dependencies != '' }}
+        env:
+          PACKAGES: ${{ inputs.system-dependencies }}
+        run: |
+          sudo apt-get update
+          # Word-split the space-separated list into package names.
+          # shellcheck disable=SC2086
+          sudo apt-get install -y --no-install-recommends $PACKAGES
 
       - name: Run tests
         run: cargo test --all-targets --all-features

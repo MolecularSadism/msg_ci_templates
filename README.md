@@ -55,11 +55,18 @@ jobs:
       bevy-lint-enabled: true              # Optional: default is true
       bevy-lint-rev: 02112fe3d3de6d1369892ec7a8ea39a1143d2977  # Optional: default shown
       forbidden-attributes-check: true     # Optional: default is true
+      system-dependencies: pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev  # Optional: default shown; "" skips
       publish-checks: true                 # Optional: default is false — enable for library crates
       crate-tag-prefix: v                  # Optional: default is "v" (=> tags like v1.2.3)
       release-tag-check-strict: false      # Optional: default is false — warn (not fail) when
                                            #   Cargo.toml version isn't above the highest git tag
 ```
+
+The Clippy, Bevy Lint and Test jobs build dev-dependencies and examples, which
+for most Bevy projects means Bevy's default features (audio, gamepads, Wayland
+windowing). Those link against system libraries, so these jobs first
+`apt-get install` the packages in `system-dependencies`. Override the list if a
+project needs more or fewer, or pass an empty string to skip the step.
 
 The publish dry run and release tag check only run when `publish-checks: true`.
 Enable them for **library crates** you publish to crates.io. The release tag
@@ -112,6 +119,7 @@ jobs:
       bevy-lint-toolchain: nightly-2026-04-16  # Optional: nightly required by the pinned bevy_lint
       bevy-lint-rev: 6d3f8c9b2c98b57276b81eae5058ca31eaea279d  # Optional: bevy_cli main rev (Bevy 0.19)
       forbidden-attributes-check: true     # Optional: default is true
+      system-dependencies: pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev  # Optional: default shown; "" skips
 ```
 
 The same `publish-checks`, `crate-tag-prefix`, and `release-tag-check-strict`
