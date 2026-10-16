@@ -82,9 +82,10 @@ Same jobs as the 0.18 variant, but targeting Bevy 0.19.
 Bevy 0.19 uses `cfg_select`, which stabilized during the Rust 1.95 cycle. This
 variant therefore **defaults the main pipeline to `stable`** and keeps the
 `bevy-lint` job on its own nightly `bevy-lint-toolchain`. Because no tagged
-`bevy_lint` release supports Bevy 0.19 yet, `bevy-lint` is pinned to a
-`TheBevyFlock/bevy_cli` **main revision** (with its matching
-`nightly-2026-04-16` toolchain) that can compile Bevy 0.19. Bump
+`bevy_lint` release supports Bevy 0.19 yet, `bevy-lint` is pinned to the head
+of `TheBevyFlock/bevy_cli`'s **`bevy-v0.19` branch** (with its matching
+`nightly-2026-04-16` toolchain), whose lints target Bevy 0.19 paths; `main`
+still targets 0.18. Bump
 `bevy-lint-rev`/`bevy-lint-toolchain` to a tagged release once one ships.
 
 **Usage:**
@@ -117,7 +118,7 @@ jobs:
       rust-toolchain: stable               # Optional: default is stable
       bevy-lint-enabled: true              # Optional: default is true
       bevy-lint-toolchain: nightly-2026-04-16  # Optional: nightly required by the pinned bevy_lint
-      bevy-lint-rev: 6d3f8c9b2c98b57276b81eae5058ca31eaea279d  # Optional: bevy_cli main rev (Bevy 0.19)
+      bevy-lint-rev: 37fe3bdb44e80c0e13a1c250749b69dc76c497a1  # Optional: bevy_cli bevy-v0.19 rev
       forbidden-attributes-check: true     # Optional: default is true
       system-dependencies: pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev  # Optional: default shown; "" skips
 ```

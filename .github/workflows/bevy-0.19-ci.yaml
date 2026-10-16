@@ -27,9 +27,10 @@ on:
         description: 'Bevy lint git revision (from TheBevyFlock/bevy_cli)'
         required: false
         type: string
-        # Pinned to a bevy_cli main commit, because no tagged bevy_lint release
-        # supports Bevy 0.19 yet. Bump to a tagged release once one ships.
-        default: '6d3f8c9b2c98b57276b81eae5058ca31eaea279d'
+        # Head of bevy_cli's `bevy-v0.19` branch: main still lints against Bevy
+        # 0.18 paths and no tagged bevy_lint release supports 0.19 yet. Bump to
+        # a tagged release once one ships.
+        default: '37fe3bdb44e80c0e13a1c250749b69dc76c497a1'
       forbidden-attributes-check:
         description: 'Check for forbidden doc attributes (no_run, ignore)'
         required: false
