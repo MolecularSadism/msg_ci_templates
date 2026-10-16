@@ -37,7 +37,7 @@ on:
         type: boolean
         default: true
       system-dependencies:
-        description: 'Space-separated apt packages installed before jobs that build dev-dependencies and examples (Bevy default features need ALSA, udev, Wayland and xkbcommon). Set to an empty string to skip.'
+        description: 'Space-separated apt packages installed before jobs that compile the crate with all features (Bevy default features need ALSA, udev, Wayland and xkbcommon). Set to an empty string to skip.'
         required: false
         type: string
         default: 'pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev'
@@ -130,6 +130,16 @@ jobs:
         with:
           shared-key: ci
           save-if: false
+
+      - name: Install system dependencies
+        if: ${{ inputs.system-dependencies != '' }}
+        env:
+          PACKAGES: ${{ inputs.system-dependencies }}
+        run: |
+          sudo apt-get update
+          # Word-split the space-separated list into package names.
+          # shellcheck disable=SC2086
+          sudo apt-get install -y --no-install-recommends $PACKAGES
 
       - name: Check documentation
         run: cargo doc --no-deps --all-features
